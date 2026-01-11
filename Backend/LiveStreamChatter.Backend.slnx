@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LiveStreamChatter.Api/LiveStreamChatter.Api.csproj" />
+    <Project Path="src/LiveStreamChatter.Application/LiveStreamChatter.Application.csproj" Id="cf6c02a5-76e8-48f8-8c93-3d9f89f22a9c" />
+    <Project Path="src/LiveStreamChatter.Domain/LiveStreamChatter.Domain.csproj" Id="e356ad2b-6d29-4463-a481-1bb586f7a24f" />
+  </Folder>
+</Solution>
