@@ -1,16 +1,19 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { JoinScreen } from './components/JoinScreen'
 import { Navbar } from './components/Navbar'
 import { VideoPlayer } from './components/VideoPlayer'
 import { ChatSidebar } from './components/ChatSidebar'
-import { MOCK_COMMENTS, type Comment } from './lib/data'
+import { type Comment, getAvatarColor, type BackendComment } from './lib/data'
+import { joinStream, postComment } from './lib/api'
 
 function App() {
   const [hasJoined, setHasJoined] = useState(false)
   const [username, setUsername] = useState("")
-  const [darkMode, setDarkMode] = useState(true) // Default to dark mode for that premium feel
-  const [comments, setComments] = useState<Comment[]>(MOCK_COMMENTS)
+  const [token, setToken] = useState("")
+  const [darkMode, setDarkMode] = useState(true)
+  const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState("")
+  const eventSourceRef = useRef<EventSource | null>(null)
 
   // Toggle Dark Mode
   useEffect(() => {
@@ -21,26 +24,78 @@ function App() {
     }
   }, [darkMode])
 
-  const handleJoin = () => {
+  useEffect(() => {
+    if (!token) return
+
+    console.log("Connecting to SSE...")
+    const es = new EventSource(`/api/sse/stream?tokenQuery=${token}`)
+
+    es.onopen = () => {
+      console.log("SSE Connected")
+    }
+
+    es.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        console.log("SSE Message:", data)
+
+        if (data.Type === "System") {
+          console.log("System:", data.Message)
+        } else {
+          const backendComment = data as BackendComment
+          if (backendComment.Message && backendComment.UserName) {
+            const newMsg: Comment = {
+              id: Date.now() + Math.random(),
+              user: backendComment.UserName,
+              text: backendComment.Message,
+              timestamp: new Date(backendComment.Timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              color: getAvatarColor(backendComment.UserName)
+            }
+            setComments(prev => [...prev, newMsg])
+          }
+        }
+      } catch (err) {
+        console.error("Error parsing SSE message", err)
+      }
+    }
+
+    es.onerror = (err) => {
+      console.error("SSE Error:", err)
+      // es.close() // Maybe retry
+    }
+
+    eventSourceRef.current = es
+
+    return () => {
+      es.close()
+    }
+  }, [token])
+
+  const handleJoin = async () => {
     if (username.trim()) {
-      setHasJoined(true)
+      try {
+        const result = await joinStream(username)
+        setToken(result.token)
+        setHasJoined(true)
+      } catch (error) {
+        console.error("Failed to join", error)
+        alert("Failed to join stream")
+      }
     }
   }
 
-  const handleSendMessage = (e?: React.FormEvent) => {
+  const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault()
     if (!newComment.trim()) return
 
-    const comment: Comment = {
-      id: Date.now(),
-      user: username,
-      text: newComment,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      color: "bg-purple-500" // Current user color
-    }
+    try {
+      await postComment(token, newComment)
+      setNewComment("")
 
-    setComments([...comments, comment])
-    setNewComment("")
+    } catch (error) {
+      console.error("Failed to send message", error)
+      alert("Failed to send message")
+    }
   }
 
   if (!hasJoined) {
@@ -59,14 +114,11 @@ function App() {
     <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
       <Navbar username={username} darkMode={darkMode} setDarkMode={setDarkMode} />
 
-      {/* Main Content */}
       <div className="relative flex-1 overflow-hidden flex flex-col lg:flex-row">
-        {/* Video Layer */}
         <div className="absolute inset-0 lg:static lg:flex-1 bg-black z-0">
           <VideoPlayer />
         </div>
 
-        {/* Chat Layer */}
         <div className="absolute inset-x-0 bottom-0 z-10 lg:static lg:z-auto lg:w-[350px] pointer-events-none lg:pointer-events-auto h-full flex flex-col justify-end lg:block">
           <ChatSidebar
             comments={comments}

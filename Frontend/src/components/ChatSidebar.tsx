@@ -81,7 +81,7 @@ export function ChatSidebar({ comments, username, newComment, setNewComment, han
                     </div>
                 </div>
                 <div className="text-[10px] text-center text-muted-foreground hidden xl:block">
-                    Remember to guard your privacy and abide by our community guidelines.
+                    Remember to guard your privacy.
                 </div>
             </div>
         </div>

@@ -20,8 +20,15 @@ public class SseController : ControllerBase
     }
 
     [HttpGet("stream")]
-    public async Task Stream([FromHeader(Name = "X-Token-Id")] string token, CancellationToken ct)
+    public async Task Stream([FromQuery] string? tokenQuery, [FromHeader(Name = "X-Token-Id")] string? tokenHeader, CancellationToken ct)
     {
+        string token = tokenHeader ?? tokenQuery;
+        if (string.IsNullOrEmpty(token))
+        {
+            Response.StatusCode = 401;
+            await Response.WriteAsync("Token is required", cancellationToken: ct);
+            return;
+        }
         var userSession = await _redisStreamService.GetUserFromTokenAsync(token);
         if (userSession == null)
         {

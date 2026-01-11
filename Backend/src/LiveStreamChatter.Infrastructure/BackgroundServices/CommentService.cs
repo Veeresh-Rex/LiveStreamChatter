@@ -2,26 +2,37 @@
 using LiveStreamChatter.Domain.Models;
 using Microsoft.Extensions.Hosting;
 using System.Threading.Channels;
+using LiveStreamChatter.Application.Services;
 
 namespace LiveStreamChatter.Infrastructure.BackgroundServices;
 
 public class CommentService : IHostedService
 {
     private readonly IRedisStreamService _redisService;
+    private readonly StreamManager _streamManager;
     private readonly Channel<CommentMessage> _localChannel;
-    public CommentService(IRedisStreamService redisStreamService)
+
+    public CommentService(IRedisStreamService redisStreamService, StreamManager streamManager)
     {
         _redisService = redisStreamService;
+        _streamManager = streamManager;
         _localChannel = Channel.CreateUnbounded<CommentMessage>();
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        // We simply tell the Redis Service: 
-        // "When a message comes, write it to my local channel"
-        await _redisService.SubscribeToCommentsAsync((comment) =>
+        // Subscribe to Redis
+        await _redisService.SubscribeToCommentsAsync(async (comment) =>
         {
-            _localChannel.Writer.TryWrite(comment);
+            try 
+            {
+                // When we get a message from Redis, we broadcast it to all local SSE clients
+                await _streamManager.BroadcastToLocalClientsAsync(comment);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error broadcasting comment: {ex.Message}");
+            }
         });
     }
 
