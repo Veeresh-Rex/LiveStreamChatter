@@ -37,7 +37,6 @@ function App() {
     es.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
-        console.log("SSE Message:", data)
 
         if (data.Type === "System") {
           console.log("System:", data.Message)

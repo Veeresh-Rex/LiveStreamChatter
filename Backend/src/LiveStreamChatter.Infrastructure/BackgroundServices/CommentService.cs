@@ -1,7 +1,5 @@
 ﻿using LiveStreamChatter.Application.Interfaces;
-using LiveStreamChatter.Domain.Models;
 using Microsoft.Extensions.Hosting;
-using System.Threading.Channels;
 using LiveStreamChatter.Application.Services;
 
 namespace LiveStreamChatter.Infrastructure.BackgroundServices;
@@ -10,13 +8,11 @@ public class CommentService : IHostedService
 {
     private readonly IRedisStreamService _redisService;
     private readonly StreamManager _streamManager;
-    private readonly Channel<CommentMessage> _localChannel;
 
     public CommentService(IRedisStreamService redisStreamService, StreamManager streamManager)
     {
         _redisService = redisStreamService;
         _streamManager = streamManager;
-        _localChannel = Channel.CreateUnbounded<CommentMessage>();
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)

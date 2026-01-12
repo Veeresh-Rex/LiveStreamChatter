@@ -16,7 +16,7 @@ public class LiveCommentController : ControllerBase
     }
 
     [HttpPost("join")]
-    public async Task<ActionResult<JoinResponse>> join([FromBody] JoinRequest joinRequest)
+    public async Task<ActionResult<JoinResponse>> Join([FromBody] JoinRequest joinRequest)
     {
         var result = await _liveCommentServices.JoinComments(joinRequest);
 

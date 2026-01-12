@@ -40,10 +40,9 @@ public class SseController : ControllerBase
         Response.Headers.Append("Content-Type", "text/event-stream");
         Response.Headers.Append("Cache-Control", "no-cache");
         Response.Headers.Append("Connection", "keep-alive");
-        string connectionId = Guid.NewGuid().ToString();
 
         // Get the Reader for this specific connection
-        var channelReader = _streamManager.JoinStream(connectionId);
+        var channelReader = _streamManager.JoinStream(token);
 
         try
         {
@@ -64,8 +63,7 @@ public class SseController : ControllerBase
         }
         finally
         {
-            // Remove user from the manager so we stop trying to send them messages
-            _streamManager.LeaveStream(connectionId);
+            _streamManager.LeaveStream(token);
         }
     }
 

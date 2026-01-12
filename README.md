@@ -36,7 +36,7 @@ The backend follows the **Clean Architecture** (Onion Architecture) principles t
 ## 🛠 Tech Stack
 
 ### Backend
-*   **.NET 10** (Preview/Latest) - High-performance server runtime.
+*   **.NET 10** (Latest) - High-performance server runtime.
 *   **ASP.NET Core Web API** - For REST endpoints.
 *   **Redis (StackExchange.Redis)** - High-speed in-memory data store used for message streaming (`Stream` data type).
 *   **Server-Sent Events (SSE)** - For lightweight, unidirectional real-time communication.
@@ -48,6 +48,48 @@ The backend follows the **Clean Architecture** (Onion Architecture) principles t
 *   **Vite** - Next-generation frontend tooling.
 *   **Tailwind CSS** - Utility-first CSS framework.
 *   **Lucide React** - Iconography.
+
+## 🧠 Deep Dive: Technical Flow & Architecture
+
+This application is engineered to handle "Thundering Herd" scenarios typical in live streaming.
+
+### 1. Redis Streams for Decoupling
+Instead of the API writing directly to connected clients (which would block the thread and limit throughput), we use **Redis Streams**.
+*   **The Writer**: When a user POSTs a comment, we simply append it to a Redis Stream key (`live_comments`) and return 200 OK immediately. This is extremely fast (sub-millisecond).
+*   **The Reader**: A background service (`CommentService.cs`) constantly polls this stream for new messages.
+
+### 2. System.Threading.Channels for Buffering
+We use .NET's `System.Threading.Channels` to bridge the gap between the Background Worker and the HTTP Connections. This implements the **Producer/Consumer** pattern.
+*   **Fan-Out**: When the Background Service receives a message from Redis, it calls `StreamManager`.
+*   **StreamManager**: Maintains a `ConcurrentDictionary` of active users. Each user has their own private `Channel<CommentMessage>`.
+*   The Manager iterates through all connected users and "drops" the message into their personal Channel.
+
+### 3. Server-Sent Events (SSE) for Delivery
+SSE is used because it's lighter than WebSockets for this specific use case (Unidirectional Server-to-Client coverage).
+*   **The Connection**: When a user performs a GET to `/api/sse/stream`, the `SseController`:
+    1.  Registers the user with `StreamManager`.
+    2.  Obtains the `Reader` end of the user's private Channel.
+    3.  Enters an `await foreach` loop, waiting for messages to arrive in the Channel.
+*   **The Push**: As soon as a message lands in the Channel, the Controller wakes up, serializes it to JSON, and writes it to the HTTP Response stream in the standard SSE format (`data: { ... }\n\n`).
+
+### Summary Diagram
+```mermaid
+graph LR
+    User[User A] -->|POST Comment| API[API Controller]
+    API -->|XADD| Redis[(Redis Stream)]
+    
+    Worker[Background Worker] -->|XREAD| Redis
+    Worker -->|Broadcast| SM[Stream Manager]
+    
+    SM -->|Write| ChanA[Channel A]
+    SM -->|Write| ChanB[Channel B]
+    
+    ChanA -->|Await Foreach| ConnA[SSE Connection A]
+    ChanB -->|Await Foreach| ConnB[SSE Connection B]
+    
+    ConnA -->|Push Event| BrowserA[User A Browser]
+    ConnB -->|Push Event| BrowserB[User B Browser]
+```
 
 ## 📂 Project Structure
 

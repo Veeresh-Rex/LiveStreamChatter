@@ -26,6 +26,7 @@ public class StreamManager
     public void LeaveStream(string connectionId)
     {
         _clients.TryRemove(connectionId, out var writer);
+
         // Try to close the writer to free resources
         writer?.TryComplete();
     }
