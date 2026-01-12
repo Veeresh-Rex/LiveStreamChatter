@@ -11,7 +11,7 @@ The application is built to simulate a high-concurrency chat environment like Tw
 
 ### Data Flow
 1.  **User Joins**: User enters a username.
-    *   **Frontend** calls `POST /api/chat/join` to authenticate and receive a Token.
+    *   **Frontend** calls `POST /api/chat/join` and receive a Token.
 2.  **User Comments**: User types a message.
     *   **Frontend** sends `POST /api/chat/comment`.
     *   **API** validates the request and pushes the message to **Redis Streams**. This ensures fast write response times and decouples the writer from the readers.
