@@ -3,7 +3,7 @@
 LiveStreamChatter is a high-performance, real-time chat application designed for live streaming environments.It is capable to handles high-volume chat traffic, and broadcasts messages in real-time to all connected clients using a modern, scalable architecture.
 
 ## 🎥 Demo
-[Link to Demo Video]("")
+[Link to Demo Video]("https://github.com/Veeresh-Rex/LiveStreamChatter/blob/main/Demo/demo.mp4")
 
 ## 🚀 Concept & Flow
 
